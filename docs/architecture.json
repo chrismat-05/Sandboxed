@@ -1,0 +1,102 @@
+{
+  "project": "Sandboxed",
+  "version": "1.0.0",
+  "category": "Operating Systems / Linux Systems Programming / Application Security",
+  "modules": [
+    {
+      "id": "apps.api",
+      "name": "FastAPI Backend Service",
+      "path": "apps/api",
+      "entry_point": "apps/api/app/main.py",
+      "responsibilities": [
+        "HTTP API endpoints for executions, policies, experiments, system capabilities",
+        "Request validation and error sanitization",
+        "Persistence coordinator using SQLAlchemy / SQLite",
+        "Integration with sandbox execution manager"
+      ],
+      "dependencies": [
+        "sandbox_engine.manager",
+        "sandbox_engine.policies",
+        "sandbox_engine.linux"
+      ]
+    },
+    {
+      "id": "sandbox_engine.manager",
+      "name": "Execution Manager & Lifecycle State Machine",
+      "path": "sandbox_engine/manager",
+      "entry_point": "sandbox_engine/manager/execution_manager.py",
+      "responsibilities": [
+        "Async job queue with bounded concurrency",
+        "Execution lifecycle state transitions",
+        "Output streaming with bounded buffers",
+        "Timeout watchdog and cancellation",
+        "Process tree supervision and resource collection"
+      ],
+      "dependencies": [
+        "sandbox_engine.linux",
+        "sandbox_engine.policies",
+        "sandbox_engine.monitoring"
+      ]
+    },
+    {
+      "id": "sandbox_engine.linux",
+      "name": "Linux Isolation & Enforcement Engine",
+      "path": "sandbox_engine/linux",
+      "entry_point": "sandbox_engine/linux/runner.py",
+      "responsibilities": [
+        "Capability detection (namespaces, cgroups v2, seccomp, bwrap)",
+        "Bubblewrap namespace and filesystem sandbox invocation",
+        "cgroups v2 hierarchy management (memory.max, cpu.max, pids.max)",
+        "Seccomp BPF policy compilation / argument synthesis",
+        "Supervision, process group reaping, signal escalation"
+      ],
+      "dependencies": [
+        "sandbox_engine.policies"
+      ]
+    },
+    {
+      "id": "sandbox_engine.policies",
+      "name": "Security & Resource Policy Models",
+      "path": "sandbox_engine/policies",
+      "entry_point": "sandbox_engine/policies/models.py",
+      "responsibilities": [
+        "Pydantic schemas for execution policies",
+        "Default policy profiles (Standard, Strict, CPU-Restricted, Memory-Restricted)",
+        "Safe built-in experiment workloads (Normal, CPU, Memory, Timeout, NetBlock, FileEscape)",
+        "Validation against host security boundaries"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "sandbox_engine.monitoring",
+      "name": "Resource Monitoring & Telemetry",
+      "path": "sandbox_engine/monitoring",
+      "entry_point": "sandbox_engine/monitoring/collector.py",
+      "responsibilities": [
+        "Parsing cgroups v2 resource metrics (cpu.stat, memory.current, memory.peak)",
+        "Distinguishing requested limits vs measured consumption",
+        "Exit code interpretation (signals, OOM, timeout, syscall kill)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "apps.web",
+      "name": "React + Vite Frontend Application",
+      "path": "apps/web",
+      "entry_point": "apps/web/src/main.jsx",
+      "responsibilities": [
+        "Developer-tool dashboard with dark theme",
+        "Overview: Execution stats, queue status, capability readiness",
+        "Playground: Interactive code runner with preset workloads and live results",
+        "Executions: Searchable history, metrics inspector, exit code details",
+        "Policy Lab: Multi-policy comparative experiments with live charts",
+        "Security Policies: Policy inspector and custom configuration",
+        "System Information: Real capability probe results and Linux prerequisites",
+        "Settings: Runtime preferences and execution limits"
+      ],
+      "dependencies": [
+        "apps.api"
+      ]
+    }
+  ]
+}
