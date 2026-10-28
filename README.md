@@ -12,7 +12,7 @@ Clone the repository and run the automated setup script. This installs all syste
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/sandboxed.git
+git clone https://github.com/chrismat-05/sandboxed.git
 cd sandboxed
 
 # Run automated dependency install and setup (requires sudo for cgroups & apt)
