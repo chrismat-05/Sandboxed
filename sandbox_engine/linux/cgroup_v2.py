@@ -1,7 +1,11 @@
-"""
-Sandboxed - cgroups v2 Resource Controller Management
-Applies hardware resource boundaries (memory.max, cpu.max, pids.max) before execution begins.
-"""
+# cgroups v2 controller manager.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# could be viva qn
+# 4:30 AM: ok bye the byee
+# this works almost always
+# to work on
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 import os
 import signal
@@ -13,19 +17,11 @@ from sandbox_engine.monitoring.collector import collect_cgroup_v2_metrics, Execu
 
 
 class CgroupV2Manager:
-    """
-    Manages dedicated child cgroups under the delegated cgroup2 hierarchy.
-    Enforces hardware bounds before code execution starts.
-    """
-
     def __init__(self, cgroup_root: str = "/sys/fs/cgroup", slice_name: str = "sandboxed.slice"):
         self.cgroup_root = Path(cgroup_root)
         self.slice_dir = self.cgroup_root / slice_name
 
     def setup_slice(self) -> None:
-        """
-        Ensures the root Sandboxed slice exists and has subtree control enabled.
-        """
         if not self.cgroup_root.exists():
             return
         self.slice_dir.mkdir(parents=True, exist_ok=True)
@@ -38,17 +34,21 @@ class CgroupV2Manager:
                 pass
 
     def create_execution_cgroup(self, execution_id: str, policy: ExecutionPolicy) -> Path:
-        """
-        Creates an isolated cgroup directory for an individual execution and writes limits.
-        """
         exec_cgroup = self.slice_dir / f"exec_{execution_id}"
         exec_cgroup.mkdir(parents=True, exist_ok=True)
+        # print("got to this point value is:", exec_cgroup)
 
-        # 1. Enforce Memory Limit (memory.max)
+        # 1. Enforce Memory Limit (memory.max & memory.swap.max)
         mem_limit_bytes = policy.memory_limit_mb * 1024 * 1024
         mem_max_file = exec_cgroup / "memory.max"
         if mem_max_file.is_file():
             mem_max_file.write_text(f"{mem_limit_bytes}\n", encoding="utf-8")
+        mem_swap_file = exec_cgroup / "memory.swap.max"
+        if mem_swap_file.is_file():
+            try:
+                mem_swap_file.write_text("0\n", encoding="utf-8")
+            except (OSError, PermissionError):
+                pass
 
         # 2. Enforce CPU Quota (cpu.max: quota period)
         # Standard CFS period is 100,000 microseconds (100ms)

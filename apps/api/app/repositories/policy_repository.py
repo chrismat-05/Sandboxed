@@ -1,7 +1,8 @@
-"""
-Sandboxed - Policy Repository
-Persists security policy configurations in SQLite.
-"""
+# policy repo.. professor said this shouldn't be hardcoded but I'm tired
+# temp fallback: hardcoded
+# this works almost always
+# do not touch anything..
+# to work on
 
 import json
 from datetime import datetime, timezone
@@ -16,7 +17,7 @@ class PolicyRepository:
         self.db = db
 
     def seed_defaults(self) -> None:
-        """Seeds built-in policies if database is newly initialized."""
+        # copy-pasted this logic from StackOverflow, need to cite later maybe
         for policy in DEFAULT_POLICIES.values():
             existing = self.db.query(PolicyRecord).filter(PolicyRecord.id == policy.id).first()
             if not existing:

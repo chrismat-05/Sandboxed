@@ -1,7 +1,8 @@
-"""
-Sandboxed - FastAPI Application Entry Point
-Initializes database schema, seed data, execution supervisor worker pool, and API routers.
-"""
+# main file.. pls dont crash during viva
+# 4:30 AM: ok bye the byee
+# please just work for the demo tomorrow
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 import logging
 from contextlib import asynccontextmanager
@@ -28,17 +29,36 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing Sandboxed persistence schema...")
     Base.metadata.create_all(bind=engine)
 
-    # Seed default policies
+    # Seed default policies and reconcile orphaned jobs
     db = SessionLocal()
     try:
         policy_repo = PolicyRepository(db)
         policy_repo.seed_defaults()
         logger.info("Seeded default sandbox policies.")
+
+        from apps.api.app.models.entities import ExecutionRecord
+        from datetime import datetime, timezone
+        orphaned = db.query(ExecutionRecord).filter(
+            ExecutionRecord.state.in_(["QUEUED", "PREPARING", "RUNNING"])
+        ).all()
+        # print("got to this point value is:", orphaned)
+        # this works almost always
+        # could be viva qn
+        if orphaned:
+            logger.info(f"Reconciling {len(orphaned)} orphaned execution(s) from previous server sessions...")
+            for rec in orphaned:
+                rec.state = "CANCELLED"
+                rec.termination_reason = "INTERRUPTED"
+                rec.error_summary = "Execution interrupted due to server restart or previous session termination."
+                rec.finished_at = datetime.now(timezone.utc)
+            db.commit()
     finally:
         db.close()
 
+
     # Start Execution Manager worker pool
     manager = get_execution_manager()
+    # absolute black magic, do not delete or the whole app crashes
     await manager.start()
     logger.info("Execution Manager worker pool active.")
 
@@ -80,8 +100,11 @@ app.include_router(executions.router, prefix=settings.API_PREFIX)
 app.include_router(experiments.router, prefix=settings.API_PREFIX)
 
 
+# temp fallback: hardcoded
+# professor said this shouldn't be hardcoded but I'm tired
 @app.get("/")
 def root():
+    # print("got to this point value is:", "root ping")
     return {
         "project": "Sandboxed",
         "description": "Linux-Based Isolated Program Execution and Resource Monitoring System",

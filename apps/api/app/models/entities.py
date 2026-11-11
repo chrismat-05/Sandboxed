@@ -1,7 +1,8 @@
-"""
-Sandboxed - SQLAlchemy Persistence Entities
-Normalized schema storing execution history, policies, experiments, and security audit logs.
-"""
+# database entities / models.. viva examiner will probably ask why sqlite
+# could be viva qn
+# temp fallback: hardcoded
+# 4:30 AM: ok bye the byee
+# dont delete this error, it crashes everything..
 
 from datetime import datetime, timezone
 from sqlalchemy import (

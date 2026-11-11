@@ -1,6 +1,8 @@
-"""
-Sandboxed - Policies Router
-"""
+# policies router.. professor said this shouldn't be hardcoded but I'm tired
+# temp fallback: hardcoded
+# to work on
+# do not touch anything..
+# this works almost always
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status

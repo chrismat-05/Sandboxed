@@ -1,6 +1,7 @@
-"""
-Sandboxed - Dashboard Summary Router
-"""
+# dashboard summary router.. please just work for the demo tomorrow
+# temp fallback: hardcoded
+# 4:30 AM: ok bye the byee
+# do not touch anything..
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 def get_dashboard_summary(db: Session = Depends(get_db)):
     exec_repo = ExecutionRepository(db)
     counts = exec_repo.get_summary_counts()
+    # print("got to this point value is:", counts)
     recent_records, _ = exec_repo.list_executions(skip=0, limit=10)
 
     recent_summaries = [

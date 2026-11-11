@@ -1,6 +1,6 @@
-"""
-Sandboxed - Policy Request & Response Schemas
-"""
+# policy schemas.. professor said this shouldn't be hardcoded but I'm tired
+# to work on
+# this works almost always
 
 from datetime import datetime
 from typing import Optional

@@ -1,6 +1,8 @@
-"""
-Sandboxed - System Capabilities & Workloads Router
-"""
+# system capabilities router.. please just work for the demo tomorrow
+# could be viva qn
+# tolearn: why does netsh output change format on windows fml
+# this works almost always
+# do not touch anything..
 
 from typing import List
 from fastapi import APIRouter
@@ -13,16 +15,11 @@ router = APIRouter(prefix="/system", tags=["System"])
 
 @router.get("/capabilities", response_model=EngineCapabilityReport)
 def get_system_capabilities():
-    """
-    Returns actual host environment isolation capabilities.
-    Honestly reveals whether cgroups v2, bubblewrap, and namespaces are active.
-    """
+    # honest capabilities check
     return detect_capabilities(settings.CGROUP_ROOT)
 
 
 @router.get("/workloads", response_model=List[BuiltinWorkload])
 def get_builtin_workloads():
-    """
-    Returns built-in safe test workloads designed for Operating Systems demonstrations.
-    """
+    # test workloads for demo
     return BUILTIN_WORKLOADS

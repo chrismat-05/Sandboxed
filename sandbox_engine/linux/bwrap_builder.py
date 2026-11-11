@@ -1,8 +1,11 @@
-"""
-Sandboxed - Bubblewrap Command Builder
-Constructs hardened, least-privilege Linux container arguments using bubblewrap (bwrap).
-Establishes namespaces (PID, mount, network, user, IPC, UTS) and restricted root mounts.
-"""
+# bubblewrap command builder.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# copy-pasted this logic from StackOverflow, need to cite later maybe
+# tolearn: why does netsh output change format on windows fml
+# 4:30 AM: ok bye the byee
+# this works almost always
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 import os
 from pathlib import Path
@@ -11,15 +14,6 @@ from sandbox_engine.policies.models import ExecutionPolicy, FilesystemPolicy
 
 
 class BwrapCommandBuilder:
-    """
-    Constructs bubblewrap invocation arguments enforcing least privilege:
-    - Never binds the host root filesystem or user home directories (/root, /home)
-    - Isolates network egress by default via --unshare-net
-    - Grants read-only access only to required system binaries and runtime libraries
-    - Allocates private /tmp and restricted working directory
-    - Enforces --die-with-parent to guarantee process group termination
-    """
-
     def __init__(self, bwrap_path: str = "/usr/bin/bwrap"):
         self.bwrap_path = bwrap_path
 
@@ -32,10 +26,8 @@ class BwrapCommandBuilder:
         extra_args: Optional[List[str]] = None,
         seccomp_bpf_fd: Optional[int] = None,
     ) -> List[str]:
-        """
-        Builds the complete CLI argument list for bubblewrap.
-        """
         cmd: List[str] = [self.bwrap_path]
+        # print("got to this point value is:", cmd)
 
         # 1. Namespace Isolation
         cmd.extend([

@@ -1,3 +1,11 @@
+// Exact copy of attached dribble design generated, to redesign later.
+// TODO: remake this full function after VIVA, dont touch now, everything breaks
+// please just work for the demo tomorrow
+// absolute black magic, do not delete or the whole app crashes
+// temporary fix so the UI doesn't clip during presentation
+// temporary fix so the UI doesn't go down during presentation
+// copy-pasted this logic from StackOverflow, need to cite later maybe
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   FlaskConical,
@@ -6,12 +14,6 @@ import {
   Clock,
   HardDrive,
   Cpu,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  FileCode,
-  Shield,
-  Layers,
   ChevronRight,
   Info,
 } from 'lucide-react';
@@ -26,6 +28,7 @@ export default function PolicyLab() {
   const [workloads, setWorkloads] = useState([]);
 
   // Creator state
+  // professor said this shouldn't be hardcoded but I'm tired
   const [expName, setExpName] = useState('Comparative Resource Containment Benchmark');
   const [selectedWorkloadId, setSelectedWorkloadId] = useState('memory_allocation');
   const [selectedPolicyIds, setSelectedPolicyIds] = useState(['standard', 'memory_constrained']);
@@ -35,6 +38,7 @@ export default function PolicyLab() {
   const pollIntervalRef = useRef(null);
 
   useEffect(() => {
+    // console.log("HERE!!! policy lab init")
     loadInitial();
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -98,18 +102,18 @@ export default function PolicyLab() {
 
     try {
       setIsCreating(true);
-      const newExp = await api.createExperiment({
+      const exp = await api.createExperiment({
         name: expName,
-        description: `Comparing workload [${workload.title}] across ${selectedPolicyIds.length} policies.`,
         workload_id: selectedWorkloadId,
-        source_code: workload.code,
+        workload_code: workload.code,
         policy_ids: selectedPolicyIds,
       });
 
-      const updated = await api.listExperiments();
-      setExperiments(updated);
-      setSelectedExpId(newExp.id);
-      loadResults(newExp.id);
+      setSelectedExpId(exp.id);
+      await loadInitial();
+      await api.runExperiment(exp.id);
+      setIsRunning(true);
+      startPolling(exp.id);
     } catch (err) {
       console.error('Failed to create experiment:', err);
     } finally {
@@ -117,96 +121,69 @@ export default function PolicyLab() {
     }
   };
 
-  const handleRunExperiment = async () => {
-    if (!selectedExpId) return;
-    try {
-      setIsRunning(true);
-      await api.runExperiment(selectedExpId);
-
-      // Poll experiment results
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = setInterval(async () => {
-        const res = await api.getExperimentResults(selectedExpId);
+  const startPolling = (expId) => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await api.getExperimentResults(expId);
         setActiveExpResults(res);
-        if (res.status === 'COMPLETED' || res.status === 'FAILED') {
-          clearInterval(pollIntervalRef.current);
+        if (res.status !== 'RUNNING') {
           setIsRunning(false);
-          const updated = await api.listExperiments();
-          setExperiments(updated);
+          clearInterval(pollIntervalRef.current);
         }
-      }, 1500);
-    } catch (err) {
-      console.error('Failed to run experiment:', err);
-      setIsRunning(false);
-    }
+      } catch (err) {
+        console.error('Polling experiment results error:', err);
+        setIsRunning(false);
+        clearInterval(pollIntervalRef.current);
+      }
+    }, 1000);
   };
 
-  // Prepare chart data
+  const selectedWorkload = workloads.find((w) => w.id === selectedWorkloadId);
+
   const chartData = activeExpResults?.comparisons?.map((c) => ({
     name: c.policy_name,
     duration: c.wall_time_sec || 0,
     peakMemory: c.peak_memory_mb || 0,
-    status: c.status,
   })) || [];
 
-  const selectedWorkload = workloads.find((w) => w.id === selectedWorkloadId);
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Banner */}
-      <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-lg flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto font-sub">
+      {/* Title */}
+      <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center space-x-2 text-blue-400 text-xs font-mono mb-1">
-            <FlaskConical className="w-4 h-4" />
-            <span>OPERATING SYSTEMS POLICY EXPERIMENTATION LAB</span>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Comparative Policy Evaluation</h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Execute identical program workloads sequentially under varying cgroups v2 quotas, memory caps,
-            and syscall restrictions to measure real kernel containment differences without inter-test interference.
+          <h2 className="text-2xl font-serif font-bold text-beige-100 tracking-wide">Policy Lab: Comparative Benchmarking</h2>
+          <p className="text-xs text-beige-400 mt-1">
+            Evaluate how identical workloads behave across varying cgroups v2 resource boundaries and syscall policies.
           </p>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {selectedExpId && (
-            <button
-              onClick={handleRunExperiment}
-              disabled={isRunning}
-              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded text-xs font-semibold shadow-sm transition"
-            >
-              <Play className={`w-3.5 h-3.5 mr-1.5 fill-current ${isRunning ? 'animate-spin' : ''}`} />
-              {isRunning ? 'Running Experiment...' : 'Execute Experiment'}
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Main Grid: Experiment Configurator (Left 4 cols) vs Results & Analytics (Right 8 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Experiment Creator & List */}
+        {/* Left: Experiment Creator & History */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Creator Box */}
-          <div className="bg-[#0f172a] border border-slate-800 rounded-lg p-4 space-y-3">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+          {/* Creator Card */}
+          <div className="bg-burgundy-850 border border-burgundy-700 rounded-xl p-4 space-y-4">
+            <h3 className="text-xs font-bold text-beige-100 uppercase tracking-wider font-mono">
               New Comparative Experiment
             </h3>
 
             <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Experiment Title</label>
+              <label className="block text-[11px] text-beige-400 mb-1">Experiment Name</label>
               <input
                 type="text"
                 value={expName}
                 onChange={(e) => setExpName(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 font-mono"
+                className="w-full bg-burgundy-950 border border-burgundy-700 text-beige-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-champagne-500 font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Select Workload</label>
+              <label className="block text-[11px] text-beige-400 mb-1">Select Workload</label>
               <select
                 value={selectedWorkloadId}
                 onChange={(e) => setSelectedWorkloadId(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 font-mono"
+                className="w-full bg-burgundy-950 border border-burgundy-700 text-beige-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-champagne-500 font-mono"
               >
                 {workloads.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -215,14 +192,14 @@ export default function PolicyLab() {
                 ))}
               </select>
               {selectedWorkload && (
-                <p className="text-[11px] text-slate-400 mt-1 italic">
+                <p className="text-[11px] text-beige-400 mt-1 italic">
                   {selectedWorkload.description}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-[11px] text-slate-400 mb-1.5">
+              <label className="block text-[11px] text-beige-400 mb-1.5">
                 Target Policy Profiles ({selectedPolicyIds.length} selected)
               </label>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
@@ -231,10 +208,10 @@ export default function PolicyLab() {
                   return (
                     <label
                       key={p.id}
-                      className={`flex items-center justify-between p-2 rounded text-xs cursor-pointer border transition ${
+                      className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer border transition-all ${
                         isChecked
-                          ? 'bg-blue-600/15 border-blue-500/40 text-slate-200'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                          ? 'bg-burgundy-500/25 border-burgundy-500/50 text-beige-100'
+                          : 'bg-burgundy-950 border-burgundy-700 text-beige-400 hover:border-burgundy-650'
                       }`}
                     >
                       <div className="flex items-center space-x-2">
@@ -242,11 +219,11 @@ export default function PolicyLab() {
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleTogglePolicy(p.id)}
-                          className="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0"
+                          className="rounded bg-burgundy-800 border-burgundy-700 text-burgundy-500 focus:ring-0"
                         />
                         <span className="font-mono text-[11px]">{p.name}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-champagne-400 font-mono">
                         {p.memory_limit_mb}MB / {p.cpu_quota_pct}% CPU
                       </span>
                     </label>
@@ -258,38 +235,38 @@ export default function PolicyLab() {
             <button
               onClick={handleCreateExperiment}
               disabled={isCreating || !expName.trim() || selectedPolicyIds.length === 0}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded text-xs font-semibold border border-slate-700 transition"
+              className="w-full py-2 bg-burgundy-500 hover:bg-burgundy-400 disabled:opacity-50 text-beige-100 rounded-lg text-xs font-semibold shadow-velvet-glow transition-all"
             >
-              {isCreating ? 'Creating...' : 'Create Experiment'}
+              {isCreating ? 'Creating Experiment...' : 'Create & Run Benchmark'}
             </button>
           </div>
 
           {/* Past Experiments List */}
-          <div className="bg-[#0f172a] border border-slate-800 rounded-lg p-4">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono mb-2">
+          <div className="bg-burgundy-850 border border-burgundy-700 rounded-xl p-4">
+            <h3 className="text-xs font-bold text-beige-100 uppercase tracking-wider font-mono mb-2">
               Experiment History
             </h3>
             <div className="space-y-1.5 max-h-56 overflow-y-auto">
               {experiments.length === 0 ? (
-                <p className="text-xs text-slate-500">No experiments created yet.</p>
+                <p className="text-xs text-beige-500">No experiments created yet.</p>
               ) : (
                 experiments.map((exp) => (
                   <button
                     key={exp.id}
                     onClick={() => handleSelectExperiment(exp.id)}
-                    className={`w-full text-left p-2.5 rounded text-xs transition border flex items-center justify-between ${
+                    className={`w-full text-left p-2.5 rounded-lg text-xs transition border flex items-center justify-between ${
                       selectedExpId === exp.id
-                        ? 'bg-blue-600/20 border-blue-500 text-white'
-                        : 'bg-slate-900/60 border-slate-800/80 text-slate-400 hover:border-slate-700'
+                        ? 'bg-burgundy-500/25 border-burgundy-500/60 text-beige-100'
+                        : 'bg-burgundy-950 border-burgundy-700 text-beige-400 hover:border-burgundy-650'
                     }`}
                   >
                     <div>
-                      <div className="font-semibold text-slate-200 truncate max-w-[200px]">{exp.name}</div>
-                      <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                      <div className="font-semibold text-beige-200 truncate max-w-[200px]">{exp.name}</div>
+                      <div className="text-[10px] font-mono text-beige-500 mt-0.5">
                         {exp.runs?.length || 0} Runs | {exp.status}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-beige-500 shrink-0" />
                   </button>
                 ))
               )}
@@ -300,22 +277,22 @@ export default function PolicyLab() {
         {/* Right: Comparative Results & Charts */}
         <div className="lg:col-span-8 space-y-4">
           {!activeExpResults ? (
-            <div className="bg-[#0f172a] border border-slate-800 rounded-lg p-12 text-center text-slate-500 text-xs">
+            <div className="bg-burgundy-850 border border-burgundy-700 rounded-xl p-12 text-center text-beige-500 text-xs">
               Select an experiment to view comparative results and telemetry charts.
             </div>
           ) : (
             <>
               {/* Comparative Table */}
-              <div className="bg-[#0f172a] border border-slate-800 rounded-lg overflow-hidden">
-                <div className="px-5 py-3 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between text-xs">
+              <div className="bg-burgundy-850 border border-burgundy-700 rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-burgundy-700 bg-burgundy-950/70 flex items-center justify-between text-xs">
                   <div>
-                    <h3 className="font-semibold text-white">{activeExpResults.name}</h3>
-                    <p className="text-slate-400 font-mono text-[11px] mt-0.5">
+                    <h3 className="font-serif font-semibold text-beige-100 text-base">{activeExpResults.name}</h3>
+                    <p className="text-beige-400 font-mono text-[11px] mt-0.5">
                       Status: {activeExpResults.status} | Completed: {activeExpResults.completed_runs}/{activeExpResults.total_runs}
                     </p>
                   </div>
                   {isRunning && (
-                    <div className="flex items-center text-xs font-mono text-blue-400 animate-pulse">
+                    <div className="flex items-center text-xs font-mono text-champagne-400 animate-pulse">
                       <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                       Executing runs sequentially...
                     </div>
@@ -324,7 +301,7 @@ export default function PolicyLab() {
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-900/40 text-slate-400 border-b border-slate-800 uppercase font-mono text-[11px]">
+                    <thead className="bg-burgundy-950/80 text-beige-400 border-b border-burgundy-700 uppercase font-mono text-[11px]">
                       <tr>
                         <th className="py-2.5 px-4">Policy</th>
                         <th className="py-2.5 px-4">State</th>
@@ -334,35 +311,35 @@ export default function PolicyLab() {
                         <th className="py-2.5 px-4">Reason</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-mono">
+                    <tbody className="divide-y divide-burgundy-700/60 font-mono">
                       {activeExpResults.comparisons?.map((c) => (
-                        <tr key={c.policy_id} className="hover:bg-slate-800/40">
-                          <td className="py-2.5 px-4 text-slate-200 font-semibold">{c.policy_name}</td>
+                        <tr key={c.policy_id} className="hover:bg-burgundy-750">
+                          <td className="py-2.5 px-4 text-beige-200 font-semibold">{c.policy_name}</td>
                           <td className="py-2.5 px-4">
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
                                 c.status === 'COMPLETED'
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                  ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800'
                                   : c.status === 'TIMED_OUT'
-                                  ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                                  ? 'bg-amber-950/70 text-amber-300 border border-amber-800'
                                   : c.status === 'RESOURCE_LIMIT_EXCEEDED'
-                                  ? 'bg-purple-950 text-purple-400 border border-purple-800'
+                                  ? 'bg-burgundy-950 text-champagne-300 border border-champagne-600'
                                   : c.status === 'RUNNING'
-                                  ? 'bg-blue-950 text-blue-400 border border-blue-800 animate-pulse'
-                                  : 'bg-slate-800 text-slate-400'
+                                  ? 'bg-burgundy-950 text-champagne-400 border border-burgundy-500 animate-pulse'
+                                  : 'bg-burgundy-800 text-beige-400'
                               }`}
                             >
                               {c.status}
                             </span>
                           </td>
-                          <td className="py-2.5 px-4 text-slate-300">
+                          <td className="py-2.5 px-4 text-beige-300">
                             {c.wall_time_sec ? `${c.wall_time_sec}s` : '-'}
                           </td>
-                          <td className="py-2.5 px-4 text-slate-300">
+                          <td className="py-2.5 px-4 text-beige-300">
                             {c.peak_memory_mb ? `${c.peak_memory_mb} MB` : '-'}
                           </td>
-                          <td className="py-2.5 px-4 text-slate-300">{c.exit_code !== null ? c.exit_code : '-'}</td>
-                          <td className="py-2.5 px-4 text-slate-400 text-[11px] truncate max-w-[150px]">
+                          <td className="py-2.5 px-4 text-beige-300">{c.exit_code !== null ? c.exit_code : '-'}</td>
+                          <td className="py-2.5 px-4 text-beige-400 text-[11px] truncate max-w-[150px]">
                             {c.termination_reason || '-'}
                           </td>
                         </tr>
@@ -373,35 +350,35 @@ export default function PolicyLab() {
               </div>
 
               {/* Comparative Visualisation Chart */}
-              <div className="bg-[#0f172a] border border-slate-800 rounded-lg p-5">
-                <h3 className="text-sm font-semibold text-white mb-1">Comparative Resource Metric Visualisation</h3>
-                <p className="text-xs text-slate-400 mb-4">
+              <div className="bg-burgundy-850 border border-burgundy-700 rounded-xl p-5">
+                <h3 className="text-base font-serif font-semibold text-beige-100 mb-1">Comparative Resource Metric Visualisation</h3>
+                <p className="text-xs text-beige-400 mb-4">
                   Side-by-side contrast of Wall-Clock Duration (seconds) and Peak Memory Allocation (MB).
                 </p>
                 <div className="h-60">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                      <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
-                      <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#3b202f" />
+                      <XAxis dataKey="name" stroke="#9e8a75" fontSize={11} tickLine={false} />
+                      <YAxis stroke="#9e8a75" fontSize={11} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#090d16', borderColor: '#334155', borderRadius: '6px', fontSize: '12px' }}
+                        contentStyle={{ backgroundColor: '#1c1119', borderColor: '#542d43', borderRadius: '8px', fontSize: '12px', color: '#f7f2e8' }}
                       />
                       <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                      <Bar dataKey="duration" name="Wall Time (s)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="peakMemory" name="Peak RAM (MB)" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="duration" name="Wall Time (s)" fill="#d8b886" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="peakMemory" name="Peak RAM (MB)" fill="#9e2343" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Automated OS Interpretation & Analysis */}
-              <div className="bg-[#0f172a] border border-slate-800 rounded-lg p-4 space-y-2">
-                <div className="flex items-center space-x-2 text-xs font-semibold text-blue-400 font-mono">
+              <div className="bg-burgundy-850 border border-burgundy-700 rounded-xl p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-xs font-semibold text-champagne-400 font-mono">
                   <Info className="w-4 h-4" />
                   <span>OPERATING SYSTEM EVALUATION & SYNTHESIS</span>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                <p className="text-xs text-beige-300 leading-relaxed font-sub">
                   {activeExpResults.interpretation}
                 </p>
               </div>

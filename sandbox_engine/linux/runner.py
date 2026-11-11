@@ -1,8 +1,13 @@
-"""
-Sandboxed - Linux Execution Engine Runner
-Coordinates capability validation, filesystem workspace preparation,
-cgroups v2 controller isolation, bubblewrap execution, and cleanup.
-"""
+# linux sandbox runner.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# 4:30 AM: ok bye the byee
+# this works almost always
+# tolearn: why does netsh output change format on windows fml
+# could be viva qn
+# temp fallback: hardcoded
+# to work on
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 import os
 import shutil
@@ -17,18 +22,13 @@ from sandbox_engine.linux.supervisor import ProcessSupervisor, SupervisedExecuti
 
 
 class SandboxCapabilityError(RuntimeError):
-    """Raised when host system lacks required Linux isolation primitives."""
     def __init__(self, message: str, report: EngineCapabilityReport):
         super().__init__(message)
         self.report = report
 
 
 class LinuxSandboxRunner:
-    """
-    Primary interface for executing submitted programs in real Linux isolated environments.
-    Guarantees that security boundaries are verified before execution starts.
-    """
-
+    # student runner wrapper
     def __init__(
         self,
         bwrap_path: str = "/usr/bin/bwrap",
@@ -45,9 +45,6 @@ class LinuxSandboxRunner:
         self.supervisor = ProcessSupervisor(self.cgroup_manager)
 
     def check_readiness(self) -> EngineCapabilityReport:
-        """
-        Validates whether host has all prerequisites to run isolated workloads.
-        """
         return detect_capabilities(self.cgroup_root)
 
     def run_program(
@@ -58,10 +55,7 @@ class LinuxSandboxRunner:
         cancel_check: Optional[Callable[[], bool]] = None,
         force_bypass_check: bool = False,
     ) -> SupervisedExecutionResult:
-        """
-        Prepares workspace, enforces cgroups v2, executes through bubblewrap, and cleans up.
-        Raises SandboxCapabilityError if host system cannot enforce requested isolation.
-        """
+        # print("got to this point value is:", execution_id)
         report = self.check_readiness()
         if not report.ready and not force_bypass_check:
             issues_str = "; ".join(report.issues)

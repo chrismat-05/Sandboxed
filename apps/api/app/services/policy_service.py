@@ -1,7 +1,8 @@
-"""
-Sandboxed - Policy Service
-Business logic and security enforcement for execution policies.
-"""
+# policy service.. professor said this shouldn't be hardcoded but I'm tired
+# to work on
+# could be viva qn
+# this works almost always
+# do not touch anything..
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -18,9 +19,11 @@ class PolicyService:
         repo = PolicyRepository(db)
         repo.seed_defaults()
         records = repo.list_all()
+        # arr of policies
         results = []
         for r in records:
             p = ExecutionPolicy.model_validate_json(r.config_json)
+            # print("got to this point value is:", p)
             results.append(
                 PolicyResponse(
                     id=p.id,

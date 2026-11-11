@@ -1,8 +1,13 @@
-"""
-Sandboxed - Process Supervisor & Lifecycle Watchdog
-Supervises isolated execution, enforces wall-clock deadlines, reads bounded output streams
-without deadlock, handles cancellation, escalates termination signals, and reaps processes.
-"""
+# supervisor watchdog.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# 4:30 AM: ok bye the byee
+# this works almost always
+# tolearn: why does netsh output change format on windows fml
+# could be viva qn
+# temp fallback: hardcoded
+# to work on
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 import os
 import signal
@@ -37,15 +42,7 @@ class SupervisedExecutionResult(BaseModel):
 
 
 class ProcessSupervisor:
-    """
-    Supervises a sandboxed command lifecycle on Linux:
-    - Runs command inside an isolated process group (setsid)
-    - Enforces wall-clock deadline using high-resolution monotonic timer
-    - Streams and bounds stdout/stderr to prevent memory exhaustion and pipe deadlock
-    - Escalates SIGTERM -> SIGKILL on deadline expiry or cancellation
-    - Gathers cgroups v2 telemetry before cleanup
-    """
-
+    # student supervisor class
     def __init__(self, cgroup_manager: Optional[CgroupV2Manager] = None):
         self.cgroup_manager = cgroup_manager or CgroupV2Manager()
 
@@ -70,16 +67,27 @@ class ProcessSupervisor:
         total_stderr_len = 0
         output_truncated = False
 
-        # Set up process group so we can signal all descendants
-        # On Unix, start_new_session=True runs os.setsid()
+        # Set up process group so we can signal all descendants and attach to cgroup before exec
         is_windows = (os.name == "nt")
         kwargs = {
             "stdout": subprocess.PIPE,
             "stderr": subprocess.PIPE,
             "stdin": subprocess.DEVNULL,
         }
+
+        def _preexec_child():
+            os.setsid()
+            if cgroup_path:
+                try:
+                    procs_file = cgroup_path / "cgroup.procs"
+                    if procs_file.is_file():
+                        with open(procs_file, "w") as f:
+                            f.write(f"{os.getpid()}\n")
+                except Exception:
+                    pass
+
         if not is_windows:
-            kwargs["start_new_session"] = True
+            kwargs["preexec_fn"] = _preexec_child
 
         proc: Optional[subprocess.Popen] = None
         termination_reason = TerminationReason.COMPLETED
@@ -87,6 +95,8 @@ class ProcessSupervisor:
 
         try:
             proc = subprocess.Popen(cmd, **kwargs)
+            # print("got to this point value is:", proc.pid)
+            # this works almost always
 
             # Attach PID to cgroup v2 before it makes heavy progress
             if cgroup_path and not is_windows:

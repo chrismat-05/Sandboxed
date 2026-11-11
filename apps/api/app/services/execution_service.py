@@ -1,7 +1,9 @@
-"""
-Sandboxed - Execution Service
-Coordinates submission, database persistence, job lifecycle, and cancellation.
-"""
+# execution service.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# 4:30 AM: ok bye the byee
+# this works almost always
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 import hashlib
 import json
@@ -35,6 +37,8 @@ class ExecutionService:
         audit_repo = AuditRepository(db)
 
         # 1. Resolve Policy
+        # temp fallback: hardcoded
+        # copy-pasted this logic from StackOverflow, need to cite later maybe
         resolved_policy: ExecutionPolicy
         if custom_policy:
             resolved_policy = custom_policy
@@ -63,6 +67,7 @@ class ExecutionService:
             state=ExecutionState.QUEUED.value,
             submitted_at=datetime.now(timezone.utc),
         )
+        # print("got to this point value is:", record)
         exec_repo.create(record)
 
         # 4. Audit Log

@@ -107,6 +107,13 @@ def test_execution_submission_and_lookup():
     assert get_res.status_code == 200
     assert get_res.json()["id"] == exec_id
 
+    # Clean up test execution
+    from apps.api.app.models.db import SessionLocal
+    from apps.api.app.repositories.execution_repository import ExecutionRepository
+    with SessionLocal() as db:
+        repo = ExecutionRepository(db)
+        repo.delete(exec_id)
+
 
 def test_experiment_creation_and_retrieval():
     """Verify creating a multi-policy experiment in Policy Lab."""
@@ -128,3 +135,11 @@ def test_experiment_creation_and_retrieval():
     res_results = client.get(f"/api/experiments/{exp_id}/results")
     assert res_results.status_code == 200
     assert res_results.json()["experiment_id"] == exp_id
+
+    # Clean up test experiment
+    from apps.api.app.models.db import SessionLocal
+    from apps.api.app.models.entities import ExperimentRecord, ExperimentRunRecord
+    with SessionLocal() as db:
+        db.query(ExperimentRunRecord).filter(ExperimentRunRecord.experiment_id == exp_id).delete()
+        db.query(ExperimentRecord).filter(ExperimentRecord.id == exp_id).delete()
+        db.commit()

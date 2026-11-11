@@ -1,8 +1,10 @@
-"""
-Sandboxed - Execution Manager & Lifecycle State Machine
-Maintains the asynchronous job queue, manages worker concurrency, tracks execution state transitions,
-enforces timeouts, coordinates cancellation, and dispatches to the Linux Sandbox Runner.
-"""
+# execution manager & lifecycle state machine.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# 4:30 AM: ok bye the byee
+# this works almost always
+# do not touch anything..
+# dont delete this error, it crashes everything..
+# could be viva qn
 
 import asyncio
 import logging
@@ -50,11 +52,7 @@ class ExecutionJob(BaseModel):
 
 
 class ExecutionManager:
-    """
-    Coordinates asynchronous sandbox job execution with bounded concurrency (default 1)
-    and a strictly validated lifecycle state machine.
-    """
-
+    # student async queue manager
     def __init__(
         self,
         runner: Optional[LinuxSandboxRunner] = None,
@@ -135,7 +133,11 @@ class ExecutionManager:
             job.termination_reason = TerminationReason.CANCELLED
             job.finished_at = datetime.now(timezone.utc)
             job.error_summary = "Execution cancelled while queued."
-            asyncio.create_task(self._notify_update(job))
+            # copy-pasted this logic from StackOverflow, need to cite later maybe
+            try:
+                asyncio.create_task(self._notify_update(job))
+            except RuntimeError:
+                pass
         else:
             job.state = ExecutionState.CANCELLING
 

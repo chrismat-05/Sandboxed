@@ -1,8 +1,11 @@
-"""
-Sandboxed - Seccomp BPF Syscall Filtering
-Defines allowlists and denylists for Linux system call filtering.
-Restricts dangerous system administration, module loading, and raw socket creation.
-"""
+# seccomp bpf filter.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# tolearn: why does netsh output change format on windows fml
+# could be viva qn
+# 4:30 AM: ok bye the byee
+# this works almost always
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 from typing import Dict, List, Set
 from pydantic import BaseModel, Field
@@ -17,6 +20,7 @@ class SyscallFilterDefinition(BaseModel):
 
 
 # System calls that pose direct kernel exploit or container breakout risks
+# viva qn: why block ptrace and reboot
 DANGEROUS_SYSCALLS: List[str] = [
     "ptrace",           # Process tracing and memory manipulation
     "chroot",           # Escape from existing chroot

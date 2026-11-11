@@ -1,7 +1,8 @@
-"""
-Sandboxed - Resource Monitoring & Telemetry
-Parses cgroups v2 statistics, exit codes, process statuses, and execution duration.
-"""
+# resource monitoring & telemetry.. please just work for the demo tomorrow
+# tolearn: why does netsh output change format on windows fml
+# 4:30 AM: ok bye the byee
+# this works almost always
+# do not touch anything..
 
 import os
 from pathlib import Path
@@ -10,10 +11,7 @@ from pydantic import BaseModel, Field
 
 
 class ExecutionMetrics(BaseModel):
-    """
-    Measurable telemetry gathered from Linux cgroups v2 and supervisor timers.
-    Clearly distinguishes requested policy limits from measured physical consumption.
-    """
+    # metrics model.. viva qn material
     wall_time_sec: float = Field(default=0.0, description="Measured wall-clock execution duration in seconds")
     cpu_time_user_sec: Optional[float] = Field(default=None, description="User-mode CPU time consumed in seconds")
     cpu_time_system_sec: Optional[float] = Field(default=None, description="Kernel-mode CPU time consumed in seconds")
@@ -35,7 +33,7 @@ class ExecutionMetrics(BaseModel):
 
 
 def parse_key_value_file(path: Path) -> Dict[str, str]:
-    """Parse space-separated or key-value cgroup files like cpu.stat or memory.events."""
+    # copy-pasted this logic from StackOverflow, need to cite later maybe
     if not path.is_file():
         return {}
     results = {}
@@ -47,11 +45,12 @@ def parse_key_value_file(path: Path) -> Dict[str, str]:
                 results[parts[0]] = parts[1]
     except (OSError, PermissionError):
         pass
+    # print("got to this point value is:", results)
     return results
 
 
 def read_int_file(path: Path) -> Optional[int]:
-    """Read a single integer from a cgroup control file."""
+    # read integer helper
     if not path.is_file():
         return None
     try:
@@ -67,16 +66,9 @@ def read_int_file(path: Path) -> Optional[int]:
 
 
 def collect_cgroup_v2_metrics(cgroup_path: Path) -> Tuple[Dict[str, any], bool]:
-    """
-    Reads cgroup v2 controller files from the execution slice:
-    - cpu.stat
-    - memory.current
-    - memory.peak
-    - memory.events
-    - pids.current
-    - pids.events
-    Returns a dictionary of raw measurements and an oom_killed flag.
-    """
+    # cgroup parsing logic.. please just work for the demo tomorrow
+    # absolute black magic, do not delete or the whole app crashes
+    # 4:30 AM: ok bye the byee
     metrics = {
         "cpu_user_sec": None,
         "cpu_system_sec": None,

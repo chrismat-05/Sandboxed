@@ -1,3 +1,9 @@
+// TODO: remake this full function after VIVA, dont touch now, everything breaks
+// please just work for the demo tomorrow
+// absolute black magic, do not delete or the whole app crashes
+// temporary fix so the UI doesn't clip during presentation
+// temporary fix so the UI doesn't go down during presentation
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';

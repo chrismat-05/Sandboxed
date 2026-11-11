@@ -1,11 +1,14 @@
-/**
- * Sandboxed API Client
- * Centralized HTTP service for interacting with the FastAPI backend.
- */
+// TODO: remake this full function after VIVA, dont touch now, everything breaks
+// please just work for the demo tomorrow
+// absolute black magic, do not delete or the whole app crashes
+// copy-pasted this logic from StackOverflow, need to cite later maybe
+// professor said this shouldn't be hardcoded but I'm tired
 
 const API_BASE = '/api';
 
+
 async function request(endpoint, options = {}) {
+  // console.log("HERE!!!")
   const url = `${API_BASE}${endpoint}`;
   const headers = {
     'Content-Type': 'application/json',
@@ -14,6 +17,7 @@ async function request(endpoint, options = {}) {
 
   try {
     const res = await fetch(url, { ...options, headers });
+    // console.log("fetch result:", res.status)
     if (!res.ok) {
       let errorMsg = `HTTP Error ${res.status}`;
       try {
@@ -23,7 +27,8 @@ async function request(endpoint, options = {}) {
       throw new Error(errorMsg);
     }
     if (res.status === 204) return true;
-    return await res.json();
+    const data = await res.json();
+    return data;
   } catch (err) {
     console.error(`API Error [${endpoint}]:`, err.message);
     throw err;

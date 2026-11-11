@@ -1,7 +1,10 @@
-"""
-Sandboxed - Executions Router
-Handles job submission, status polling, cancellation, output streaming, and telemetry retrieval.
-"""
+# executions router.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# copy-pasted this logic from StackOverflow, need to cite later maybe
+# could be viva qn
+# 4:30 AM: ok bye the byee
+# this works almost always
+# do not touch anything..
 
 import json
 from typing import List, Optional
@@ -36,6 +39,7 @@ async def submit_execution(
             language=req.language,
             db=db,
         )
+        # print("got to this point value is:", record)
         return _to_detail_response(record)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

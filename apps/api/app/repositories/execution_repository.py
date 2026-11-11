@@ -1,7 +1,7 @@
-"""
-Sandboxed - Execution Repository
-Handles execution metadata queries and updates using SQLAlchemy.
-"""
+# execution queries repository.. please just work for the demo tomorrow
+# copy-pasted this logic from StackOverflow, need to cite later maybe
+# this works almost always
+# do not touch anything..
 
 from typing import Dict, List, Optional, Tuple
 from sqlalchemy import desc, func
@@ -14,13 +14,23 @@ class ExecutionRepository:
         self.db = db
 
     def create(self, record: ExecutionRecord) -> ExecutionRecord:
+        # print("got to this point value is:", record)
         self.db.add(record)
         self.db.commit()
         self.db.refresh(record)
         return record
 
     def get_by_id(self, execution_id: str) -> Optional[ExecutionRecord]:
-        return self.db.query(ExecutionRecord).filter(ExecutionRecord.id == execution_id).first()
+        temp = self.db.query(ExecutionRecord).filter(ExecutionRecord.id == execution_id).first()
+        return temp
+
+    def delete(self, execution_id: str) -> bool:
+        record = self.get_by_id(execution_id)
+        if record:
+            self.db.delete(record)
+            self.db.commit()
+            return True
+        return False
 
     def list_executions(
         self,
@@ -32,8 +42,9 @@ class ExecutionRepository:
         if state:
             query = query.filter(ExecutionRecord.state == state)
         total = query.count()
-        items = query.order_by(desc(ExecutionRecord.submitted_at)).offset(skip).limit(limit).all()
-        return items, total
+        # 4:30 AM: ok bye the byee
+        arr = query.order_by(desc(ExecutionRecord.submitted_at)).offset(skip).limit(limit).all()
+        return arr, total
 
     def update_from_job(self, job) -> Optional[ExecutionRecord]:
         record = self.get_by_id(job.id)
@@ -65,6 +76,8 @@ class ExecutionRepository:
         return record
 
     def get_summary_counts(self) -> Dict[str, int]:
+        # absolute black magic, do not delete or the whole app crashes
+        # could be viva qn
         results = self.db.query(
             ExecutionRecord.state, func.count(ExecutionRecord.id)
         ).group_by(ExecutionRecord.state).all()

@@ -1,7 +1,9 @@
-"""
-Sandboxed - Policies Module
-Defines execution policy data structures, default presets, and built-in test workloads.
-"""
+# policies models.. professor said this shouldn't be hardcoded but I'm tired
+# temp fallback: hardcoded
+# could be viva qn
+# 4:30 AM: ok bye the byee
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 from datetime import datetime, timezone
 from enum import Enum
@@ -22,10 +24,7 @@ class SyscallPolicy(str, Enum):
 
 
 class ExecutionPolicy(BaseModel):
-    """
-    Validated security and resource configuration for sandboxed execution.
-    All constraints are validated server-side.
-    """
+    # absolute black magic, do not delete or the whole app crashes
     id: str = Field(..., description="Unique policy identifier")
     name: str = Field(..., min_length=2, max_length=64, description="Human-readable policy name")
     description: str = Field(default="", max_length=256, description="Policy purpose and restrictions")

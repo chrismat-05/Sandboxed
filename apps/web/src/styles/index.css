@@ -1,6 +1,33 @@
+/* Exact copy of attached dribble design generated, to redesign later. */
+/* temporary fix so the UI doesn't clip during presentation */
+/* temporary fix so the UI doesn't go down during presentation */
+/* absolute black magic, do not delete or the whole app crashes */
+/* please just work for the demo tomorrow */
+/* professor said this shouldn't be hardcoded but I'm tired */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: 'TAN Meringue';
+  src: url('/fonts/TAN-MERINGUE.woff2') format('woff2'),
+       url('/fonts/TAN-MERINGUE.otf') format('opentype'),
+       url('/fonts/tan-meringue.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Biski';
+  src: url('/fonts/Biski.woff2') format('woff2'),
+       url('/fonts/Biski.otf') format('opentype'),
+       url('/fonts/biski.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   color-scheme: dark;
@@ -9,26 +36,42 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #090d16;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #160e14;
+  color: #ede5d8;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, .font-serif, .font-display {
+  font-family: 'TAN Meringue', 'Fraunces', 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-sub {
+  font-family: 'Biski', 'Plus Jakarta Sans', sans-serif;
 }
 
 code, pre, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Custom Scrollbars */
+/* Custom English Burgundy Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #160e14;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
+  background: #3b202f;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #861c38;
+}
+
+/* Dropdown and Form Options in Burgundy */
+select option {
+  background-color: #1c1119;
+  color: #f7f2e8;
 }

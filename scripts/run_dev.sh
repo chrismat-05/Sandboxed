@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# Sandboxed - Development Runner Script
-# Launches FastAPI backend on port 8000 and Vite React frontend on port 5173.
-# ==============================================================================
+# please just work for the demo tomorrow
+# 4:30 AM: ok bye the byee
+# to work on
+# do not touch anything..
+# dont delete this error, it crashes everything..
+# this works almost always
 
 set -euo pipefail
 

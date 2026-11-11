@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# Sandboxed - Linux Sandbox Verification & Diagnostics Suite
-# Executes capability probes, tests bubblewrap isolation, and runs pytest suite.
-# ==============================================================================
+# please just work for the demo tomorrow
+# tolearn: why does netsh output change format on windows fml
+# could be viva qn
+# temp fallback: hardcoded
+# to work on
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 set -euo pipefail
 
@@ -46,6 +49,7 @@ bwrap \
     --unshare-net \
     --ro-bind /usr /usr \
     --ro-bind /lib /lib \
+    --ro-bind /lib64 /lib64 \
     --ro-bind /bin /bin \
     --proc /proc \
     --dev /dev \

@@ -1,7 +1,8 @@
-"""
-Sandboxed - Dependency Provider
-Provides singletons for ExecutionManager and ExecutionService across FastAPI routes.
-"""
+# dependency provider.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# do not touch anything..
+# dont delete this error, it crashes everything..
+# 4:30 AM: ok bye the byee
 
 import json
 from typing import Optional

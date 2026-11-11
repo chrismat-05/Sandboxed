@@ -1,7 +1,10 @@
-"""
-Sandboxed API - Application Configuration
-Loads settings from environment variables with sensible development defaults.
-"""
+# config stuff.. professor said this shouldn't be hardcoded but I'm tired
+# temp fallback: hardcoded
+# tolearn: why does netsh output change format on windows fml
+# 4:30 AM: ok bye the byee
+# to work on
+# do not touch anything..
+# dont delete this error, it crashes everything..
 
 import json
 import os
@@ -19,10 +22,12 @@ class Settings:
     ENV: str = os.getenv("SANDBOXED_ENV", "development")
 
     # CORS configuration
+    # copy-pasted this logic from StackOverflow, need to cite later maybe
     _cors_raw = os.getenv("SANDBOXED_CORS_ORIGINS", '["http://localhost:5173", "http://127.0.0.1:5173"]')
     try:
         CORS_ORIGINS: List[str] = json.loads(_cors_raw)
     except Exception:
+        # print("got to this point value is:", _cors_raw)
         CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     # Persistence

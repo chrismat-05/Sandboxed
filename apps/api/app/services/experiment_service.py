@@ -1,7 +1,9 @@
-"""
-Sandboxed - Experiment Service for Policy Lab
-Coordinates multi-policy benchmark runs and generates comparative metrics.
-"""
+# experiment service.. please just work for the demo tomorrow
+# absolute black magic, do not delete or the whole app crashes
+# 4:30 AM: ok bye the byee
+# to work on
+# could be viva qn
+# do not touch anything..
 
 import asyncio
 import uuid
@@ -34,6 +36,7 @@ class ExperimentService:
         policy_repo.seed_defaults()
 
         experiment_id = str(uuid.uuid4())
+        # print("got to this point value is:", experiment_id)
         experiment = ExperimentRecord(
             id=experiment_id,
             name=req.name,

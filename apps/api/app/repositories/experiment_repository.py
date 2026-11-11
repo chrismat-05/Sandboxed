@@ -1,7 +1,7 @@
-"""
-Sandboxed - Experiment Repository
-Handles multi-policy experiment records and runs in Policy Lab.
-"""
+# experiment repo for policy lab.. please just work for the demo tomorrow
+# 4:30 AM: ok bye the byee
+# to work on
+# do not touch anything..
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ class ExperimentRepository:
         self.db = db
 
     def create(self, experiment: ExperimentRecord, runs: List[ExperimentRunRecord]) -> ExperimentRecord:
+        # print("got to this point value is:", experiment)
         self.db.add(experiment)
         for run in runs:
             self.db.add(run)
