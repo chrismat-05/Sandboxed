@@ -1,0 +1,471 @@
+# Sandboxed: Linux Project Examination Master Guide
+**Official Written Submission Sheet • Systems Architecture Notes • Live Demo Walkthrough • 30+ Viva Questions & Model Answers • Codebase File Map**
+
+---
+
+## Quick Navigation
+1. [Official Written Examination Submission Sheet](#1-official-written-examination-submission-sheet)
+   - [1. Project Title](#1-project-title)
+   - [2. Objective](#2-objective)
+   - [3. Phases of the Work (Standardized 4-Phase OS Architecture)](#3-phases-of-the-work)
+   - [4. Project Workflow](#4-project-workflow)
+   - [5. Conclusion](#5-conclusion)
+   - [6. Future Enhancements](#6-future-enhancements)
+2. [Step-by-Step Practical Demonstration Script](#2-step-by-step-practical-demonstration-script)
+   - [Pre-Demo Boot Sequence](#pre-demo-boot-sequence)
+   - [Live Demonstration Scenarios & Examiner Dialogue](#live-demonstration-scenarios)
+3. [Exhaustive Viva Voce Q&A Handbook (30+ Questions)](#3-exhaustive-viva-voce-qa-handbook)
+   - [Category A: Linux Namespaces & Process Isolation](#category-a-linux-namespaces--process-isolation)
+   - [Category B: cgroups v2, Resource Management & CFS](#category-b-cgroups-v2-resource-management--cfs)
+   - [Category C: Bubblewrap, Containerization & Rootless Execution](#category-c-bubblewrap-containerization--rootless-execution)
+   - [Category D: Process Supervision, Signals & Pipe Deadlocks](#category-d-process-supervision-signals--pipe-deadlocks)
+   - [Category E: System Calls, Seccomp & Security Boundaries](#category-e-system-calls-seccomp--security-boundaries)
+   - [Category F: System Architecture, State Machine & Database](#category-f-system-architecture-state-machine--database)
+4. [Codebase File Map (Where to Show What to the Examiner)](#4-codebase-file-map)
+5. [Linux Commands & Emergency Troubleshooting Reference](#5-linux-commands--emergency-troubleshooting-reference)
+
+---
+
+# 1. Official Written Examination Submission Sheet
+*(Write these exact 6 points directly onto your answer sheet)*
+
+### 1. Project Title
+**Sandboxed: Design and Implementation of a Linux-Based Isolated Program Execution and Resource Monitoring System**
+
+---
+
+### 2. Objective
+To design, implement, and evaluate an unprivileged Linux-based execution platform that safely executes untrusted user programs inside isolated sandbox environments using **cgroups v2**, **Linux namespaces**, **bubblewrap (`bwrap`)**, and **seccomp BPF**. 
+
+The system enforces strict multi-tenant boundaries (CPU Completely Fair Scheduler quotas, physical memory limits, process count caps, ephemeral filesystem views, and network isolation), provides real-time asynchronous process supervision with deadlock-free bounded I/O, collects high-resolution kernel telemetry, and offers an interactive developer dashboard with comparative policy experimentation.
+
+---
+
+### 3. Phases of the Work
+*(Adapted into a standardized 4-phase academic systems lifecycle mirroring cybersecurity & OS architecture standards)*
+
+| Phase | Phase Title | Content & Key Deliverables |
+| :---: | :--- | :--- |
+| **1** | **System Understanding & Threat Surface Identification** | • **Problem Definition**: Identified the risks of executing untrusted software in multi-tenant environments (online judges, CI/CD runners, plugin runtimes).<br>• **Asset & Attack Surface Mapping**: Mapped critical host assets requiring defense: host credentials (`/etc/shadow`, `~/.ssh`), host process table (`PID exhaustion`), physical CPU/RAM capacity, and private network interfaces.<br>• **Threat Classification**: Categorized threats into Denial of Service (High), Privilege Escalation (Critical), Filesystem Tampering (Critical), and Network Exfiltration (High).<br>• **OS Terminology & Primitives**: Formalized core Linux concepts: Namespaces (isolation), cgroups v2 (hardware limits), Seccomp BPF (syscall filtering), and POSIX process control (`setsid()`, `killpg()`). |
+| **2** | **Kernel Isolation Primitives & Security Architecture** | • **Namespace Virtualization**: Implemented 6 Linux namespaces (`PID`, `Mount`, `Net`, `User`, `UTS`, `IPC`) for unprivileged containerization without root daemons.<br>• **Hardware Quota Modeling (cgroups v2)**: Configured unified controllers (`cpu.max` for CFS scheduling bandwidth, `memory.max` for physical RAM ceiling, `pids.max` for fork-bomb throttling).<br>• **Ephemeral Filesystem Sandbox**: Synthesized bubblewrap (`bwrap`) profiles with read-only runtime bindings (`/usr`, `/lib`, `/bin`), in-memory `tmpfs` at `/tmp`, and an isolated `/workspace`.<br>• **Syscall Filtering**: Formulated Seccomp BPF policies blocking hazardous administrative system calls (`ptrace`, `bpf`, `mount`, `reboot`, `init_module`).<br>• **Policy Modeling**: Formulated Pydantic validation schemas enforcing strict safety bounds for execution deadlines, memory, and CPU limits. |
+| **3** | **System Implementation & Supervisor Engineering** | • **Asynchronous Process Supervisor**: Designed process group leadership (`setsid()`), live non-blocking stdout/stderr stream capture, and two-stage signal escalation (`SIGTERM` $\rightarrow$ grace period $\rightarrow$ `SIGKILL` to entire `-pgid`).<br>• **Pipe Deadlock Prevention**: Eliminated 64KB Linux pipe buffer deadlock using non-blocking file descriptors (`fcntl(O_NONBLOCK)`) and bounded memory buffering (`max_output_bytes = 65,536`).<br>• **Execution Manager & State Machine**: Implemented FIFO queue management coordinating states: `QUEUED` $\rightarrow$ `PREPARING` $\rightarrow$ `RUNNING` $\rightarrow$ `{COMPLETED, FAILED, TIMED_OUT, RESOURCE_LIMIT_EXCEEDED, CANCELLED}`.<br>• **Backend REST API**: Implemented FastAPI web server with SQLite / SQLAlchemy persistence for audit logging and historical telemetry.<br>• **Frontend Developer Dashboard**: Built a dark-themed React + Vite interface with CodeMirror editor, execution telemetry charts, and a Policy Lab for comparative benchmarking. |
+| **4** | **Experimental Verification, Testing & Benchmarking** | • **Automated Test Suites**: Built 43 automated unit tests and a 10-point Linux integration test suite verifying end-to-end kernel isolation.<br>• **Active Exploit Verification**: Verified containment against fork-bombs (`pids.max`), memory allocation loops (kernel OOM killer), infinite execution loops (deadline watchdog), filesystem escape (`/etc/shadow`), and network egress (`socket.connect`).<br>• **Kernel Telemetry Extraction**: Extracted and verified physical resource metrics from `/sys/fs/cgroup/...` (`cpu.stat`, `memory.peak`, `memory.events`).<br>• **Comparative Benchmarks**: Benchmarked CPU CFS throttling curves and memory allocation thresholds across Standard, Constrained, and Permissive policies.<br>• **Automated Deployment**: Packaged automated installation scripts (`setup_ubuntu.sh`) configuring cgroups delegation and system dependencies. |
+
+---
+
+### 4. Project Workflow
+
+```
++----------------------------------------------------------------------------------------------------+
+| 1. USER SUBMISSION                                                                                 |
+|    • User writes Python code in React Playground or selects a built-in workload preset             |
+|    • Configures policy: Timeout (s), Memory (MB), CPU Quota (%), Max PIDs, Network (Enabled/Disabled) |
++----------------------------------------------------------------------------------------------------+
+                                                  │  (HTTP POST /api/executions)
+                                                  ▼
++----------------------------------------------------------------------------------------------------+
+| 2. API VALIDATION & PERSISTENCE                                                                    |
+|    • FastAPI backend validates limits against safety bounds via Pydantic schemas                  |
+|    • Execution record initialized in SQLite database with status 'QUEUED'                          |
++----------------------------------------------------------------------------------------------------+
+                                                  │
+                                                  ▼
++----------------------------------------------------------------------------------------------------+
+| 3. EXECUTION MANAGER (FIFO QUEUE)                                                                  |
+|    • Asynchronous worker picks up job -> Transitions status to 'PREPARING'                         |
+|    • Checks host Linux capabilities (cgroups v2, bwrap, user namespaces, seccomp)                  |
++----------------------------------------------------------------------------------------------------+
+                                                  │
+                                                  ▼
++----------------------------------------------------------------------------------------------------+
+| 4. ISOLATION CONTAINER & CGROUP PROVISIONING                                                       |
+|    • Creates dedicated cgroup child slice: /sys/fs/cgroup/sandboxed.slice/sandboxed-exec-<id>       |
+|    • Writes hardware limits: cpu.max, memory.max, pids.max                                         |
+|    • Bubblewrap constructs sandbox command: --unshare-all, --ro-bind /usr, --tmpfs /tmp            |
++----------------------------------------------------------------------------------------------------+
+                                                  │
+                                                  ▼
++----------------------------------------------------------------------------------------------------+
+| 5. PROCESS EXECUTION & SUPERVISION                                                                 |
+|    • Child process forked with setsid() inside namespaces; PID added to cgroup.procs              |
+|    • Supervisor tracks monotonic wall-clock deadline                                               |
+|    • Non-blocking I/O reader buffers stdout/stderr up to bounded limit (64 KB)                     |
+|    • If timeout occurs: Sends SIGTERM -> wait 500ms grace -> sends SIGKILL to process group (-pgid)|
++----------------------------------------------------------------------------------------------------+
+                                                  │
+                                                  ▼
++----------------------------------------------------------------------------------------------------+
+| 6. TELEMETRY EXTRACTION & CLEANUP                                                                  |
+|    • Reads cpu.stat (user_usec, system_usec), memory.peak, memory.events (oom_kill count)           |
+|    • Removes ephemeral cgroup child slice and cleans up temporary workspace files                  |
++----------------------------------------------------------------------------------------------------+
+                                                  │
+                                                  ▼
++----------------------------------------------------------------------------------------------------+
+| 7. PERSISTENCE & CLIENT PRESENTATION                                                               |
+|    • Final status (COMPLETED / TIMED_OUT / RESOURCE_LIMIT_EXCEEDED / FAILED) stored in SQLite       |
+|    • React Dashboard updates in real time with outputs, exit codes, and resource metrics charts    |
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+### 5. Conclusion
+The **Sandboxed** project successfully demonstrates practical Operating Systems concepts by unifying modern Linux kernel isolation primitives into a secure, observable, and measurable platform. 
+
+By utilizing unprivileged user namespaces and bubblewrap alongside delegated cgroups v2 controllers, it proves that robust multi-tenant program execution can be achieved without the security attack surface of privileged Docker daemons or the heavy boot latency of virtual machines. 
+
+The system successfully enforces hardware boundaries against memory leaks, CPU starvation, and fork-bombs, while strictly restricting filesystem access and network egress. It provides a reliable software engineering foundation for academic evaluation, automated grading, and secure sandbox experimentation.
+
+---
+
+### 6. Future Enhancements
+1. **Micro-VM Integration (Firecracker / gVisor)**: Introduce hypervisor-level isolation backends for multi-tenant cloud environments requiring protection against theoretical shared-kernel exploits.
+2. **Multi-Language Runtimes**: Expand execution profiles to compiled languages (C, C++, Rust, Go) and interpreted languages (Node.js, Java) with dedicated minimal chroot roots.
+3. **Bi-directional WebSocket Terminal**: Implement interactive bi-directional WebSocket streaming to support interactive terminal inputs (`stdin`) and sub-millisecond execution updates.
+4. **Distributed Worker Architecture**: Decouple the execution manager across multiple distributed worker nodes using a message queue (RabbitMQ / Redis) for high-throughput horizontal scaling.
+5. **Static Binary & eBPF Security Auditing**: Integrate eBPF runtime probes for real-time anomalous syscall detection and automated security reporting.
+
+---
+
+# 2. Step-by-Step Practical Demonstration Guide
+
+### Pre-Demo Boot Sequence
+
+#### 1. Open Terminal in the project root:
+```bash
+cd ~/sandboxed   # or your workspace directory
+```
+
+#### 2. Start the Application:
+```bash
+./scripts/run_dev.sh
+```
+The terminal will display:
+```
+==========================================================
+  SANDBOXED: Starting Development Servers
+==========================================================
+[+] Starting FastAPI backend on http://127.0.0.1:8000...
+[+] Starting Vite frontend on http://127.0.0.1:5173...
+==========================================================
+  Servers running:
+  - Web Dashboard: http://127.0.0.1:5173
+  - API Docs:      http://127.0.0.1:8000/docs
+==========================================================
+```
+
+#### 3. Open Browser:
+- Tab 1: Web Dashboard: `http://127.0.0.1:5173`
+- Tab 2: Swagger API Documentation: `http://127.0.0.1:8000/docs`
+
+---
+
+### Live Demonstration Scenarios & Examiner Dialogue
+
+#### Demo Scenario 1: Host Capability Diagnostics (Proof of Real Kernel Features)
+- **Where**: Navigate to **System Info** tab in the Web Dashboard.
+- **What to show**:
+  - Host Kernel version (e.g., Linux 6.x)
+  - Bubblewrap: Available (`/usr/bin/bwrap`)
+  - cgroups v2: Mounted at `/sys/fs/cgroup`
+  - Active Controllers: `cpu`, `memory`, `pids`
+  - User Delegation: Active (`sandboxed.slice`)
+  - Seccomp BPF: Supported
+- **What to say to the Examiner**:
+  > *"Examiner Sir/Ma'am, before our system accepts any untrusted code, it probes the host Linux kernel to ensure hardware cgroups v2 controllers, unprivileged user namespaces, and Seccomp filters are physically available. It will refuse to run insecurely if these boundaries are missing."*
+
+---
+
+#### Demo Scenario 2: Baseline Execution & Real Kernel Telemetry
+- **Where**: Go to **Playground** tab.
+- **Action**: Select Workload dropdown $\rightarrow$ `Normal Computation & Output`. Select Policy $\rightarrow$ `Standard (Balanced)`. Click **Run Code**.
+- **What to show**:
+  - Status badge: `QUEUED` $\rightarrow$ `RUNNING` $\rightarrow$ `COMPLETED` (Green).
+  - Exit code: `0`.
+  - Output shows calculation result and Python platform info.
+  - Click on the **Metrics** tab: Point to **Total CPU Time (ms)**, **User vs Kernel CPU Time (ms)**, and **Peak Memory (MB)**.
+- **What to say to the Examiner**:
+  > *"Notice that the metrics are not simulated. The runner extracted physical CPU ticks from `/sys/fs/cgroup/.../cpu.stat` (separating user mode from system kernel mode) and peak physical RAM from `memory.peak`."*
+
+---
+
+#### Demo Scenario 3: Memory Limit Enforcement & Kernel OOM Killer
+- **Where**: Playground tab.
+- **Action**: Select Workload dropdown $\rightarrow$ `Memory Allocation Test` (attempts to allocate 50MB of RAM). Select Policy $\rightarrow$ `Memory Constrained (32MB)`. Click **Run Code**.
+- **What to show**:
+  - Execution halts abruptly around ~30MB.
+  - Status changes to: **`RESOURCE_LIMIT_EXCEEDED`** (Orange/Red).
+  - Click on the **Metrics** tab: Point to **OOM Killed: Yes (Count: 1)** and Peak Memory pegged at 32MB.
+- **What to say to the Examiner**:
+  > *"Here, the untrusted code attempted to allocate 50MB. Because our policy set `memory.max` to 32MB in cgroups v2, the Linux kernel Out-Of-Memory (OOM) killer immediately intervened and sent SIGKILL specifically to that child slice. The supervisor detected the OOM event from `memory.events` without crashing the host."*
+
+---
+
+#### Demo Scenario 4: Process Watchdog & Infinite Loop Watchdog (Timeout)
+- **Where**: Playground tab.
+- **Action**: Select Workload dropdown $\rightarrow$ `Execution Deadline Timeout` (runs an intentional 20-second sleep loop). Select Policy $\rightarrow$ `Standard` (which has a 5.0-second timeout limit). Click **Run Code**.
+- **What to show**:
+  - The output streams: `Tick 1s...`, `Tick 2s...`, `Tick 3s...`, `Tick 4s...`.
+  - At exactly 5.0 seconds, execution stops. Status becomes: **`TIMED_OUT`**.
+- **What to say to the Examiner**:
+  > *"Our asynchronous process supervisor tracks a high-resolution monotonic timer. When the 5-second deadline elapsed, it sent SIGTERM to the process group, waited a 500ms grace period, and escalated to SIGKILL across the process group ID (`os.killpg(-pgid)`), neutralizing any background child processes."*
+
+---
+
+#### Demo Scenario 5: Filesystem Isolation Verification
+- **Where**: Playground tab.
+- **Action**: Select Workload dropdown $\rightarrow$ `Filesystem Isolation & Escape Test` (attempts to read `/etc/shadow`, `/root`, `~/.ssh/id_rsa`). Click **Run Code**.
+- **What to show**:
+  - Output displays:
+    ```
+    === VERIFYING FILESYSTEM ISOLATION ===
+    [PROTECTED] Target does not exist in sandbox root: /etc/shadow
+    [PROTECTED] Target does not exist in sandbox root: /root
+    [PROTECTED] Target does not exist in sandbox root: /home/.../.ssh
+    Filesystem isolation verification complete.
+    ```
+- **What to say to the Examiner**:
+  > *"Bubblewrap constructs a dedicated Mount Namespace (`CLONE_NEWNS`). It only binds the system interpreter libraries (`/usr`, `/lib`, `/bin`) as read-only. Sensitive host directories like `/root` or `/etc/shadow` are completely unmounted and invisible inside the container."*
+
+---
+
+#### Demo Scenario 6: Network Namespace Isolation
+- **Where**: Playground tab.
+- **Action**: Select Workload dropdown $\rightarrow$ `Network Egress Attempt` (attempts to open a TCP socket to `8.8.8.8:53`). Click **Run Code**.
+- **What to show**:
+  - Output displays:
+    ```
+    === VERIFYING NETWORK NAMESPACE ISOLATION ===
+    Attempting TCP connection to 8.8.8.8:53...
+    [PROTECTED] Connection failed as expected: [Errno 101] Network is unreachable
+    Network isolation verification complete.
+    ```
+- **What to say to the Examiner**:
+  > *"By launching with `--unshare-net` (`CLONE_NEWNET`), the sandbox gets a private loopback interface with no external routing table or default gateway. Any network connection fails immediately with `ENETUNREACH`, preventing socket exfiltration."*
+
+---
+
+#### Demo Scenario 7: Comparative Policy Lab
+- **Where**: Click on the **Policy Lab** navigation tab.
+- **Action**: Select Workload $\rightarrow$ `Memory Allocation Test` (or `CPU-Intensive Computation`). Select Policies $\rightarrow$ `Standard` vs `Memory Constrained`. Click **Run Experiment**.
+- **What to show**:
+  - The side-by-side comparative Recharts bar chart.
+  - Shows `Standard` finishing with `COMPLETED` and higher memory usage, while `Memory Constrained` finishes with `RESOURCE_LIMIT_EXCEEDED`.
+- **What to say to the Examiner**:
+  > *"The Policy Lab is our experimentation workbench. It runs identical workloads under multiple OS resource policies in sequence, visualizing differences in execution duration, CPU scheduling throttling, and memory containment."*
+
+---
+
+# 3. Exhaustive Viva Voce Q&A Handbook
+
+### Category A: Linux Namespaces & Process Isolation
+
+#### 1. What are Linux Namespaces and why are they fundamental to this project?
+- **Answer**: Namespaces are a Linux kernel feature that partitions system resources such that each process sees a dedicated, virtualized instance of that resource. They define **what a process can see**.
+- In Sandboxed, we use 6 namespaces:
+  1. `PID`: Makes the target process PID 1; hides host processes.
+  2. `Mount`: Isolates the filesystem tree.
+  3. `Network`: Provides a private loopback device with no internet egress.
+  4. `User`: Maps host UID to root inside the sandbox without host privileges.
+  5. `UTS`: Virtualizes hostname and domain.
+  6. `IPC`: Isolates inter-process communication queues and shared memory.
+
+#### 2. What is the difference between Linux Namespaces and cgroups v2?
+- **Namespaces** isolate **visibility** (what a process can see: PIDs, mount points, network interfaces).
+- **cgroups v2** isolate **resource consumption** (what a process can use: CPU cycles, physical RAM, process counts).
+- *Analogy*: Namespaces build the walls of an apartment; cgroups are the water and electricity meters that cut off supply if limits are exceeded.
+
+#### 3. How does the PID namespace prevent a process from signaling host processes?
+- When `CLONE_NEWPID` is unshared, a new PID hierarchy is created.
+- The sandboxed process becomes PID 1 inside its namespace, while on the host it has a normal high PID (e.g., 45820).
+- The process cannot see any PIDs belonging to the host OS or other containers. Because it cannot resolve host PIDs, calling `kill(target_pid, SIGTERM)` against a host PID fails with `ESRCH` (No such process).
+
+#### 4. What is user namespace (`CLONE_NEWUSER`) mapping and why is it crucial for security?
+- User namespaces allow a regular, unprivileged user on the host system to have UID 0 (root) *inside the container*.
+- This allows tools like Bubblewrap to perform mount operations inside its own private Mount namespace without requiring `sudo` or setuid root binaries on the host. Even if the code runs as "root" inside the container, on the host OS it possesses only the rights of an ordinary unprivileged user.
+
+---
+
+### Category B: cgroups v2, Resource Management & CFS
+
+#### 5. Why did you use cgroups v2 instead of cgroups v1?
+- **Unified Single Hierarchy**: In cgroups v1, every resource controller (cpu, memory, pids) lived in separate, decoupled directory trees, causing synchronization bugs and priority inversions. cgroups v2 unifies all controllers under `/sys/fs/cgroup`.
+- **Accurate Memory & OOM Accounting**: cgroups v1 failed to account for page cache and swap accurately; cgroups v2 accurately tracks all physical pages and provides detailed OOM event counters (`memory.events`).
+- **Unprivileged Delegation**: cgroups v2 allows safe, rootless delegation of sub-trees (e.g., `sandboxed.slice`), allowing standard application workers to manage sub-cgroups without root.
+
+#### 6. How does `cpu.max` enforce CPU limits in the Completely Fair Scheduler (CFS)?
+- `cpu.max` takes two values: `QUOTA` and `PERIOD` in microseconds. The default period is $100,000\ \mu\text{s}$ (100 ms).
+- If the policy sets a $50\%$ CPU quota, `cpu.max` is configured to `50000 100000`.
+- During any 100ms window, the Linux CFS scheduler allows the processes inside that cgroup to run for at most 50ms of CPU time across all cores. Once 50ms is consumed, the processes are throttled (suspended) until the next 100ms window begins.
+
+#### 7. How does the system detect and handle an Out-of-Memory (OOM) event?
+- When physical memory allocations exceed `memory.max`, the Linux kernel triggers the in-kernel OOM killer.
+- The kernel terminates the offending process with `SIGKILL` (exit status 137).
+- The Sandboxed supervisor parses `/sys/fs/cgroup/.../memory.events`, which increments `oom_kill`. The supervisor recognizes this event and marks the execution as `RESOURCE_LIMIT_EXCEEDED` with the message: *"Process killed: Exceeded memory limit of X MB"*.
+
+#### 8. How does the system neutralize a Fork Bomb?
+- A fork bomb recursively calls `fork()` to fill the operating system process table (`PID exhaustion`), causing the host OS to freeze.
+- Sandboxed writes a strict limit to `pids.max` (e.g., 16 or 32) in the child cgroup.
+- When the fork bomb attempts to create its 33rd process, the Linux kernel rejects the `clone()`/`fork()` system call with `EAGAIN` (Resource temporarily unavailable). The host machine remains completely unaffected.
+
+#### 9. What is `sandboxed.slice`?
+- It is a delegated systemd / cgroups v2 slice created during setup (`/sys/fs/cgroup/sandboxed.slice`).
+- It has write ownership granted to our unprivileged user, with `cgroup.subtree_control` enabling `cpu`, `memory`, and `pids`.
+- This enables our Python backend to dynamically create and delete ephemeral sub-cgroups (`sandboxed-exec-<id>`) without requiring `sudo` on every run.
+
+---
+
+### Category C: Bubblewrap, Containerization & Rootless Execution
+
+#### 10. Why did you choose Bubblewrap (`bwrap`) instead of Docker?
+- **No Root Daemon**: Docker requires `dockerd`, a background daemon that runs with full root privileges. If the Docker socket is exposed or a container escapes, the attacker gains host root. Bubblewrap runs directly as an unprivileged child process without any background daemon.
+- **Instant Sub-Millisecond Startup**: Docker containers require 500ms to 2 seconds to initialize network bridges and storage drivers. Bubblewrap starts in under 10 milliseconds, making it ideal for transient, high-frequency code evaluations.
+- **Rootless by Design**: Bubblewrap utilizes unprivileged user namespaces (`CLONE_NEWUSER`). It was designed specifically by the GNOME/Flatpak security team for unprivileged desktop sandboxing.
+
+#### 11. What bubblewrap flags are used to assemble the sandbox?
+- `--unshare-all`: Unshares all 6 namespaces (PID, Mount, Net, User, UTS, IPC).
+- `--unshare-net`: Enforces a private loopback device without outbound routes.
+- `--ro-bind /usr /usr`, `--ro-bind /lib /lib`, `--ro-bind /bin /bin`: Binds system libraries and the Python interpreter as strictly read-only.
+- `--proc /proc` and `--dev /dev`: Mounts isolated virtual process and device filesystems.
+- `--tmpfs /tmp`: Creates an in-memory temporary filesystem for temporary files.
+- `--bind /workspace /workspace`: Mounts an ephemeral working directory that is wiped after execution.
+
+#### 12. Why is `/tmp` mounted as `tmpfs`?
+- `tmpfs` is a memory-backed filesystem.
+- Mounting `/tmp` as `tmpfs` ensures that any files created by untrusted code are stored in RAM (which is strictly bounded by `memory.max`) rather than writing large files to the host hard drive. When the container exits, the entire filesystem disappears instantly.
+
+---
+
+### Category D: Process Supervision, Signals & Pipe Deadlocks
+
+#### 13. What is the 64KB Pipe Buffer Deadlock and how did you prevent it?
+- In Linux, standard UNIX pipes (`stdout` and `stderr`) have a default kernel buffer size of 65,536 bytes (64 KB).
+- If a child process writes more than 64 KB of text (e.g., in a loop: `while True: print("A")`), and the parent process is waiting synchronously with `process.wait()`, the pipe buffer fills up.
+- The child blocks on its `write()` call waiting for the pipe to empty, while the parent is blocked on `wait()` waiting for the child to exit. **Both processes hang forever in a circular deadlock!**
+- **Sandboxed Solution**: We configure the pipe file descriptors as non-blocking (`fcntl(fd, F_SETFL, O_NONBLOCK)`) and use an asynchronous reader that continuously drains the pipe while reading. Once `max_output_bytes` (64KB) is reached, further output is discarded and a truncation warning is appended.
+
+#### 14. Why is `setsid()` used when spawning the container?
+- `setsid()` creates a new **POSIX session** and makes the newly spawned child process the **Process Group Leader** with a new Process Group ID (`PGID = PID`).
+- If an untrusted program spawns child processes or worker threads and then hangs or times out, sending `SIGKILL` to only the parent PID leaves orphaned grandchildren running in the background.
+- Because a process group was established, the supervisor sends signals to `-pgid` (`os.killpg(pgid, signal.SIGKILL)`), instantly terminating the entire process hierarchy.
+
+#### 15. What is the two-stage signal escalation policy?
+- When a process exceeds its wall-clock deadline or receives a user cancellation request:
+  1. **Stage 1 (Graceful)**: The supervisor sends `SIGTERM` (Signal 15) to the process group. This informs the program to perform any exit cleanup.
+  2. **Grace Period**: The supervisor starts a 500ms asynchronous grace period timer.
+  3. **Stage 2 (Forceful)**: If the process has not terminated when the grace timer expires, the supervisor escalates to `SIGKILL` (Signal 9). `SIGKILL` cannot be caught, blocked, or handled, guaranteeing immediate termination.
+
+#### 16. How does the system handle Zombie Processes?
+- In Linux, when a child process terminates, its entry remains in the process table as a "zombie" until its parent calls `waitpid()` to read its exit status.
+- Bubblewrap acts as PID 1 inside the container, automatically adopting and reaping any orphaned grandchildren.
+- On the host side, our asynchronous supervisor calls `os.waitpid()` on the Bubblewrap process, ensuring no zombie processes leak into the host process table.
+
+---
+
+### Category E: System Calls, Seccomp & Security Boundaries
+
+#### 17. What is Seccomp BPF and what role does it play?
+- **Seccomp** (Secure Computing Mode) with **BPF** (Berkeley Packet Filter) allows the kernel to intercept and evaluate every system call made by a process against a predefined filter policy before the kernel executes it.
+- In Sandboxed, Seccomp acts as a second line of defense: even if code bypasses user-space checks, Seccomp rejects dangerous administrative syscalls (`ptrace`, `bpf`, `mount`, `reboot`, `init_module`) by immediately returning `EPERM` (Operation not permitted) or killing the thread.
+
+#### 18. Why can you not use language-level sandboxing (like Python's `exec()` with restricted globals)?
+- Language-level sandboxing is fundamentally flawed. In Python, an attacker can traverse the class hierarchy via introspection:
+  ```python
+  ().__class__.__base__.__subclasses__()
+  ```
+  This allows accessing the `os` module, `sys.modules`, or built-in file openers even if `__builtins__` was wiped. True security must be enforced by the Operating System kernel via hardware boundaries and memory isolation.
+
+#### 19. What is the residual limitation of container sandboxing compared to Virtual Machines (KVM/QEMU)?
+- Containers share the **host Linux kernel**. While namespaces and cgroups prevent unauthorized access and resource monopolization under normal conditions, an attacker with a kernel zero-day exploit (such as a privilege escalation bug in the kernel memory allocator or page table handling) could theoretically compromise the host.
+- Virtual Machines (like KVM or AWS Firecracker) run a separate guest kernel, providing hardware-enforced hypervisor virtualization at the cost of higher startup latency and memory overhead.
+
+---
+
+### Category F: System Architecture, State Machine & Database
+
+#### 20. What are the primary states in your Execution State Machine?
+1. `QUEUED`: Request validated and stored in SQLite; waiting for worker in FIFO queue.
+2. `PREPARING`: Worker dequeues job, creates workspace, allocates cgroup slice, and checks host capabilities.
+3. `RUNNING`: Process spawned inside namespaces; supervisor monitoring output streams and deadline.
+4. `COMPLETED`: Process exited naturally with return code 0.
+5. `FAILED`: Process exited with non-zero exit code or uncaught runtime error.
+6. `TIMED_OUT`: Process exceeded wall-clock deadline; terminated via signal escalation.
+7. `RESOURCE_LIMIT_EXCEEDED`: Process killed by kernel due to exceeding memory (`memory.max`) or process (`pids.max`) limits.
+8. `CANCELLED`: Execution manually terminated by user.
+
+#### 21. How is high-resolution telemetry extracted from cgroups v2?
+- When an execution finishes, the telemetry collector reads the accounting files in `/sys/fs/cgroup/sandboxed.slice/sandboxed-exec-<id>/`:
+  - `cpu.stat`: Contains `usage_usec` (total CPU time), `user_usec` (time spent in user space), and `system_usec` (time spent in kernel space).
+  - `memory.peak`: Kernel-recorded maximum physical RAM consumed during execution.
+  - `memory.events`: Contains the `oom_kill` counter.
+- These physical measurements are stored in the SQLite database and transmitted to the frontend for charting.
+
+#### 22. What technology stack was used to build the platform?
+- **Kernel & Sandbox Engine**: Linux cgroups v2, Linux Namespaces, Bubblewrap (`bwrap`), Seccomp BPF, Python `fcntl`/`asyncio`.
+- **Backend API**: Python 3.10+, FastAPI, Pydantic v2, SQLAlchemy, Uvicorn, SQLite.
+- **Frontend Dashboard**: React 18, Vite, Tailwind CSS, CodeMirror (Python syntax highlighting), Recharts (telemetry bar charts), Lucide Icons.
+- **Testing & Tooling**: Pytest (unit & integration tests), Bash automation scripts (`setup_ubuntu.sh`, `run_dev.sh`, `verify_linux_sandbox.sh`).
+
+---
+
+# 4. Codebase File Map
+*(If the examiner asks: "Show me where you wrote the code for X", open these exact files)*
+
+| Feature / Question Asked by Examiner | Exact File Path to Open |
+| :--- | :--- |
+| **cgroups v2 Quota Writing & Delegation** | `sandbox_engine/linux/cgroup_v2.py` |
+| **Bubblewrap Argument Synthesis (`--unshare-all`)** | `sandbox_engine/linux/bwrap_builder.py` |
+| **Process Supervisor, `setsid()`, & Deadlock-Free I/O** | `sandbox_engine/linux/supervisor.py` |
+| **Host Capability Detection (cgroups, bwrap, kernel)** | `sandbox_engine/linux/capabilities.py` |
+| **Seccomp BPF Syscall Filter Definitions** | `sandbox_engine/linux/seccomp_filter.py` |
+| **Telemetry Extraction (`cpu.stat`, `memory.peak`)** | `sandbox_engine/monitoring/collector.py` |
+| **FIFO Queue Worker & State Machine Transitions** | `sandbox_engine/manager/execution_manager.py` |
+| **Built-in Workload Presets & Security Policies** | `sandbox_engine/policies/models.py` |
+| **FastAPI REST API Routes** | `apps/api/app/api/routers/executions.py` |
+| **SQLite Database Models & Persistence** | `apps/api/app/models/entities.py` |
+| **React Playground UI & Live Streaming Output** | `apps/web/src/pages/Playground.jsx` |
+| **Policy Lab Multi-Policy Benchmarking Page** | `apps/web/src/pages/PolicyLab.jsx` |
+| **Automated Ubuntu Setup & cgroups Delegation Script**| `scripts/setup_ubuntu.sh` |
+| **Linux Capability Probe & Smoke Test Script** | `scripts/verify_linux_sandbox.sh` |
+
+---
+
+# 5. Linux Commands & Emergency Troubleshooting Reference
+
+### Essential Linux Commands for the Demo
+- **Check cgroups v2 mount**:
+  ```bash
+  mount | grep cgroup2
+  ```
+- **Inspect our delegated slice**:
+  ```bash
+  ls -la /sys/fs/cgroup/sandboxed.slice
+  ```
+- **View active controllers**:
+  ```bash
+  cat /sys/fs/cgroup/sandboxed.slice/cgroup.controllers
+  ```
+- **Run the capability probe directly**:
+  ```bash
+  ./scripts/verify_linux_sandbox.sh
+  ```
+- **Run the automated test suite**:
+  ```bash
+  ./scripts/run_tests.sh
+  ```
+
+### Emergency Troubleshooting During Presentation
+- **Issue: Port 8000 or 5173 is already in use**:
+  ```bash
+  fuser -k 8000/tcp 5173/tcp
+  ./scripts/run_dev.sh
+  ```
+- **Issue: Capabilities error on Ubuntu (cgroups slice permission denied)**:
+  ```bash
+  sudo chown -R $USER:$USER /sys/fs/cgroup/sandboxed.slice
+  ```
+- **Issue: Bubblewrap package missing**:
+  ```bash
+  sudo apt-get install -y bubblewrap libseccomp-dev
+  ```
