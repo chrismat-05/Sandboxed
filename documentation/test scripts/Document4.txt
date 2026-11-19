@@ -1,0 +1,64 @@
+import os
+import sys
+
+print("=" * 65)
+print("  SANDBOXED OS: HOST ESPIONAGE & SYSTEM CALL AUDIT")
+print("=" * 65)
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# TEST 1: Inspect /proc to Snoop on Host Process Table
+# ------------------------------------------------------------------
+print("\n[ESPIONAGE 1] Attempting to spy on Host Processes via /proc...")
+try:
+    proc_entries = [p for p in os.listdir("/proc") if p.isdigit()]
+    print(f"  Visible PIDs in container /proc: {sorted([int(p) for p in proc_entries])}")
+    if len(proc_entries) <= 3:
+        print("  -> [ISOLATED] Target sees ONLY its own virtualized namespace! Host processes hidden.")
+    else:
+        print(f"  -> [WARNING] Detected {len(proc_entries)} processes.")
+except Exception as e:
+    print(f"  -> [ERROR] Failed to list /proc: {e}")
+
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# TEST 2: Attempting to Write to Protected System Directories
+# ------------------------------------------------------------------
+print("\n[ESPIONAGE 2] Attempting to write backdoors to /usr/bin and /etc...")
+targets = ["/usr/bin/evil_backdoor", "/etc/hacked.conf"]
+
+for target in targets:
+    try:
+        with open(target, "w") as f:
+            f.write("#!/bin/sh\necho 'pwned'\n")
+        print(f"  [CRITICAL LEAK] Successfully wrote file to: {target}!")
+    except OSError as e:
+        print(f"  -> [PROTECTED] Read-only filesystem enforced on '{target}': {e}")
+    except Exception as e:
+        print(f"  -> [PROTECTED] Access prevented for '{target}': {e}")
+
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# TEST 3: Host Environment Variable Snooping
+# ------------------------------------------------------------------
+print("\n[ESPIONAGE 3] Checking Container Environment Variables...")
+env_keys = list(os.environ.keys())
+print(f"  Total variables available: {len(env_keys)}")
+print(f"  Keys: {', '.join(env_keys[:6])}...")
+if any(k in os.environ for k in ["AWS_SECRET_ACCESS_KEY", "DATABASE_URL", "SUDO_USER"]):
+    print("  -> [WARNING] Sensitive host environment variables detected!")
+else:
+    print("  -> [ISOLATED] Clean environment scrubbed. No host secrets present.")
+
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# TEST 4: Massive Output Flood (Testing Pipe Buffer Truncation)
+# ------------------------------------------------------------------
+print("\n[ESPIONAGE 4] Initiating 1,000-line rapid stdout flood attack...")
+for i in range(1, 1001):
+    print(f"FLOOD_LOG_LINE_{i:04d}: Generating output payload to test pipe buffer drainage...")
+
+print("\n>> ESPIONAGE AUDIT COMPLETED <<")

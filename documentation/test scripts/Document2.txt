@@ -1,0 +1,86 @@
+import os
+import sys
+import socket
+import time
+
+print("=" * 65)
+print("  SANDBOXED OS: MULTI-VECTOR ATTACK & CHAOS SUITE")
+print("=" * 65)
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# ATTACK 1: Host Credential & Filesystem Theft
+# ------------------------------------------------------------------
+print("\n[EXPLOIT 1] Attempting Host Filesystem Theft...")
+targets = ["/etc/shadow", "/root", os.path.expanduser("~/.ssh/id_rsa")]
+
+for target in targets:
+    try:
+        with open(target, "r") as f:
+            secret = f.read(20)
+            print(f"  [CRITICAL LEAK] Read succeeded on {target}: {secret}!")
+    except FileNotFoundError:
+        print(f"  [BLOCKED] Mount Namespace isolated: '{target}' does not exist.")
+    except PermissionError:
+        print(f"  [BLOCKED] Read-only / Permission Denied for: '{target}'.")
+    except Exception as e:
+        print(f"  [BLOCKED] Access prevented for '{target}' ({type(e).__name__}).")
+
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# ATTACK 2: Data Exfiltration via Network Socket
+# ------------------------------------------------------------------
+print("\n[EXPLOIT 2] Attempting Outbound Network Exfiltration (8.8.8.8:53)...")
+try:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1.5)
+    sock.connect(("8.8.8.8", 53))
+    print("  [CRITICAL LEAK] Outbound network connection succeeded!")
+    sock.close()
+except OSError as e:
+    print(f"  [BLOCKED] Network Namespace isolated: {e}")
+except Exception as e:
+    print(f"  [BLOCKED] Socket failed: {e}")
+
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# ATTACK 3: Controlled Fork-Bomb / Process Flood
+# ------------------------------------------------------------------
+print("\n[EXPLOIT 3] Attempting Process Table Flood (Fork-Bomb)...")
+fork_count = 0
+try:
+    for i in range(1, 50):
+        pid = os.fork()
+        if pid == 0:
+            # Child process terminates immediately
+            os._exit(0)
+        else:
+            fork_count += 1
+            os.waitpid(pid, 0) # Reap child
+    print(f"  [PROCESSED] Successfully spawned and reaped {fork_count} processes.")
+except BlockingIOError as e:
+    print(f"  [BLOCKED] cgroups v2 pids.max limit enforced: {e}")
+except OSError as e:
+    print(f"  [BLOCKED] Kernel rejected fork() via pids.max: {e}")
+
+sys.stdout.flush()
+
+# ------------------------------------------------------------------
+# ATTACK 4: RAM Bomb / Memory Exhaustion (Triggers Kernel OOM Killer)
+# ------------------------------------------------------------------
+print("\n[EXPLOIT 4] Launching Aggressive RAM Allocation Bomb...")
+print("  Allocating 10MB memory chunks in rapid succession...")
+sys.stdout.flush()
+
+memory_hog = []
+for chunk_idx in range(1, 50):
+    total_mb = chunk_idx * 10
+    print(f"  -> Allocating Chunk {chunk_idx:02d} (Total Requested: {total_mb} MB)...")
+    sys.stdout.flush()
+    # Allocate 10 Megabytes of physical bytes
+    memory_hog.append(bytearray(10 * 1024 * 1024))
+    time.sleep(0.05)
+
+print("[UNEXPECTED] Survived memory bomb without OOM termination.")

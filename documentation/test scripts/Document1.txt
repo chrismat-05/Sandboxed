@@ -1,0 +1,36 @@
+import os
+import sys
+import time
+import platform
+
+print("=" * 60)
+print("  SANDBOXED OS: BASELINE VERIFICATION DEMO")
+print("=" * 60)
+
+# 1. Verify Process Virtualization inside container
+current_pid = os.getpid()
+print(f"[+] Container Virtual PID : {current_pid}")
+if current_pid == 1:
+    print("    -> SUCCESS: Process is running as PID 1 (Isolated PID Namespace)")
+else:
+    print(f"    -> Running as PID {current_pid} inside sandbox")
+
+print(f"[+] Python Runtime        : {sys.version.split()[0]}")
+print(f"[+] Isolated Platform     : {platform.platform()}")
+print(f"[+] Current Directory     : {os.getcwd()}")
+
+# 2. Perform a deterministic computation
+print("\n[+] Running computation benchmark (Prime calculation)...")
+start_time = time.perf_counter()
+
+primes = []
+for n in range(2, 8000):
+    if all(n % d != 0 for d in range(2, int(n**0.5) + 1)):
+        primes.append(n)
+
+elapsed = time.perf_counter() - start_time
+
+print(f"[+] Benchmark Completed   : Found {len(primes)} primes")
+print(f"[+] Execution Duration    : {elapsed:.4f} seconds")
+print("=" * 60)
+print(">> DEMO 1 FINISHED WITH EXIT CODE 0 <<")

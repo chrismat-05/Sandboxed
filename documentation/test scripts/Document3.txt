@@ -1,0 +1,29 @@
+import sys
+import time
+import signal
+
+print("=" * 65)
+print("  SANDBOXED OS: SIGNAL ESCALATION & WATCHDOG TEST")
+print("=" * 65)
+
+# Intercept and mock the graceful termination signal (SIGTERM)
+def defiant_signal_handler(signum, frame):
+    print(f"\n[ALERT] Received SIGTERM (Signal {signum})! Intercepted! Refusing to exit...")
+    sys.stdout.flush()
+
+signal.signal(signal.SIGTERM, defiant_signal_handler)
+print("[+] Custom signal handler registered for SIGTERM (Signal 15).")
+print("[+] Entering infinite loop... Waiting for supervisor timeout watchdog...")
+sys.stdout.flush()
+
+seconds = 0
+try:
+    while True:
+        time.sleep(1.0)
+        seconds += 1
+        print(f"  -> Process still alive and looping... ({seconds}s elapsed)")
+        sys.stdout.flush()
+except Exception as e:
+    print(f"[!] Interrupted by: {e}")
+
+print("[UNEXPECTED] Infinite loop ended naturally.")
